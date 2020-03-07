@@ -274,6 +274,18 @@ int init_egl(struct egl *egl, const struct gbm *gbm, int samples)
 
 	get_proc_gl(GL_OES_EGL_image, glEGLImageTargetTexture2DOES);
 
+	get_proc_gl(GL_AMD_performance_monitor, glGetPerfMonitorGroupsAMD);
+	get_proc_gl(GL_AMD_performance_monitor, glGetPerfMonitorCountersAMD);
+	get_proc_gl(GL_AMD_performance_monitor, glGetPerfMonitorGroupStringAMD);
+	get_proc_gl(GL_AMD_performance_monitor, glGetPerfMonitorCounterStringAMD);
+	get_proc_gl(GL_AMD_performance_monitor, glGetPerfMonitorCounterInfoAMD);
+	get_proc_gl(GL_AMD_performance_monitor, glGenPerfMonitorsAMD);
+	get_proc_gl(GL_AMD_performance_monitor, glDeletePerfMonitorsAMD);
+	get_proc_gl(GL_AMD_performance_monitor, glSelectPerfMonitorCountersAMD);
+	get_proc_gl(GL_AMD_performance_monitor, glBeginPerfMonitorAMD);
+	get_proc_gl(GL_AMD_performance_monitor, glEndPerfMonitorAMD);
+	get_proc_gl(GL_AMD_performance_monitor, glGetPerfMonitorCounterDataAMD);
+
 	return 0;
 }
 

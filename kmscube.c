@@ -41,7 +41,7 @@ static const struct egl *egl;
 static const struct gbm *gbm;
 static const struct drm *drm;
 
-static const char *shortopts = "Ac:D:f:M:m:S:s:V:v:";
+static const char *shortopts = "Ac:D:f:M:m:p:S:s:V:v:";
 
 static const struct option longopts[] = {
 	{"atomic", no_argument,       0, 'A'},
@@ -50,6 +50,7 @@ static const struct option longopts[] = {
 	{"format", required_argument, 0, 'f'},
 	{"mode",   required_argument, 0, 'M'},
 	{"modifier", required_argument, 0, 'm'},
+	{"perfcntr", required_argument, 0, 'p'},
 	{"samples",  required_argument, 0, 's'},
 	{"video",  required_argument, 0, 'V'},
 	{"vmode",  required_argument, 0, 'v'},
@@ -71,9 +72,12 @@ static void usage(const char *name)
 			"        nv12-2img -  yuv textured (color conversion in shader)\n"
 			"        nv12-1img -  yuv textured (single nv12 texture)\n"
 			"    -m, --modifier=MODIFIER  hardcode the selected modifier\n"
+			"    -p, --perfcntr=LIST      sample specified performance counters using\n"
+			"                             the AMD_performance_monitor extension (comma\n"
+			"                             separated list, shadertoy mode only)\n"
 			"    -S, --shadertoy=FILE     use specified shadertoy shader\n"
 			"    -s, --samples=N          use MSAA\n"
-			"    -V, --video=FILE         video textured cube\n"
+			"    -V, --video=FILE         video textured cube (comma separated list)\n"
 			"    -v, --vmode=VMODE        specify the video mode in the format\n"
 			"                             <mode>[-<vrefresh>]\n",
 			name);
@@ -84,6 +88,7 @@ int main(int argc, char *argv[])
 	const char *device = NULL;
 	const char *video = NULL;
 	const char *shadertoy = NULL;
+	const char *perfcntr = NULL;
 	char mode_str[DRM_DISPLAY_MODE_LEN] = "";
 	char *p;
 	enum mode mode = SMOOTH;
@@ -145,6 +150,9 @@ int main(int argc, char *argv[])
 		case 'm':
 			modifier = strtoull(optarg, NULL, 0);
 			break;
+		case 'p':
+			perfcntr = optarg;
+			break;
 		case 'S':
 			mode = SHADERTOY;
 			shadertoy = optarg;
@@ -203,6 +211,14 @@ int main(int argc, char *argv[])
 	if (!egl) {
 		printf("failed to initialize EGL\n");
 		return -1;
+	}
+
+	if (perfcntr) {
+		if (mode != SHADERTOY) {
+			printf("performance counters only supported in shadertoy mode\n");
+			return -1;
+		}
+		init_perfcntrs(egl, perfcntr);
 	}
 
 	/* clear the color buffer */

@@ -45,6 +45,7 @@ sources = files(
   'frame-512x512-NV12.c',
   'frame-512x512-RGBA.c',
   'kmscube.c',
+  'perfcntrs.c',
 )
 
 cc = meson.get_compiler('c')
@@ -99,5 +100,6 @@ executable('texturator', files(
 	'common.c',
 	'drm-legacy.c',
 	'drm-common.c',
+	'perfcntrs.c',  # not used, but required to link
 	'texturator.c',
 ), dependencies : dep_common, install : true)

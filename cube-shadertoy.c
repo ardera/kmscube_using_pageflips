@@ -313,7 +313,11 @@ static void draw_shadertoy(unsigned i)
 
 	glDrawBuffers(1, mrt_bufs);
 
+	start_perfcntrs();
+
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	end_perfcntrs();
 
 	glDisableVertexAttribArray(0);
 
