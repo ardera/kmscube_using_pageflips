@@ -208,7 +208,8 @@ static int find_drm_device(drmModeRes **resources)
 	return fd;
 }
 
-int init_drm(struct drm *drm, const char *device, const char *mode_str, unsigned int vrefresh)
+int init_drm(struct drm *drm, const char *device, const char *mode_str,
+		unsigned int vrefresh, unsigned int count)
 {
 	drmModeRes *resources;
 	drmModeConnector *connector = NULL;
@@ -323,6 +324,7 @@ int init_drm(struct drm *drm, const char *device, const char *mode_str, unsigned
 	drmModeFreeResources(resources);
 
 	drm->connector_id = connector->connector_id;
+	drm->count = count;
 
 	return 0;
 }

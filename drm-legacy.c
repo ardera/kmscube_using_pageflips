@@ -72,7 +72,7 @@ static int legacy_run(const struct gbm *gbm, const struct egl *egl)
 
 	start_time = report_time = get_time_ns();
 
-	while (1) {
+	while (i < drm.count) {
 		struct gbm_bo *next_bo;
 		int waiting_for_flip = 1;
 
@@ -142,11 +142,12 @@ static int legacy_run(const struct gbm *gbm, const struct egl *egl)
 	return 0;
 }
 
-const struct drm * init_drm_legacy(const char *device, const char *mode_str, unsigned int vrefresh)
+const struct drm * init_drm_legacy(const char *device, const char *mode_str,
+		unsigned int vrefresh, unsigned int count)
 {
 	int ret;
 
-	ret = init_drm(&drm, device, mode_str, vrefresh);
+	ret = init_drm(&drm, device, mode_str, vrefresh, count);
 	if (ret)
 		return NULL;
 

@@ -195,7 +195,7 @@ static int atomic_run(const struct gbm *gbm, const struct egl *egl)
 
 	start_time = report_time = get_time_ns();
 
-	while (1) {
+	while (i < drm.count) {
 		struct gbm_bo *next_bo;
 		EGLSyncKHR gpu_fence = NULL;   /* out-fence from gpu, in-fence to kms */
 		EGLSyncKHR kms_fence = NULL;   /* in-fence to gpu, out-fence from kms */
@@ -369,12 +369,13 @@ static int get_plane_id(void)
 	return ret;
 }
 
-const struct drm * init_drm_atomic(const char *device, const char *mode_str, unsigned int vrefresh)
+const struct drm * init_drm_atomic(const char *device, const char *mode_str,
+		unsigned int vrefresh, unsigned int count)
 {
 	uint32_t plane_id;
 	int ret;
 
-	ret = init_drm(&drm, device, mode_str, vrefresh);
+	ret = init_drm(&drm, device, mode_str, vrefresh, count);
 	if (ret)
 		return NULL;
 

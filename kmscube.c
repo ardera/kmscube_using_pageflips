@@ -41,10 +41,11 @@ static const struct egl *egl;
 static const struct gbm *gbm;
 static const struct drm *drm;
 
-static const char *shortopts = "AD:f:M:m:S:s:V:v:";
+static const char *shortopts = "Ac:D:f:M:m:S:s:V:v:";
 
 static const struct option longopts[] = {
 	{"atomic", no_argument,       0, 'A'},
+	{"count",  required_argument, 0, 'c'},
 	{"device", required_argument, 0, 'D'},
 	{"format", required_argument, 0, 'f'},
 	{"mode",   required_argument, 0, 'M'},
@@ -61,6 +62,7 @@ static void usage(const char *name)
 			"\n"
 			"options:\n"
 			"    -A, --atomic             use atomic modesetting and fencing\n"
+			"    -c, --count              run for the specified number of frames\n"
 			"    -D, --device=DEVICE      use the given device\n"
 			"    -f, --format=FOURCC      framebuffer format\n"
 			"    -M, --mode=MODE          specify mode, one of:\n"
@@ -92,6 +94,7 @@ int main(int argc, char *argv[])
 	int opt;
 	unsigned int len;
 	unsigned int vrefresh = 0;
+	unsigned int count = ~0;
 
 #ifdef HAVE_GST
 	gst_init(&argc, &argv);
@@ -102,6 +105,9 @@ int main(int argc, char *argv[])
 		switch (opt) {
 		case 'A':
 			atomic = 1;
+			break;
+		case 'c':
+			count = strtoul(optarg, NULL, 0);
 			break;
 		case 'D':
 			device = optarg;
@@ -170,9 +176,9 @@ int main(int argc, char *argv[])
 	}
 
 	if (atomic)
-		drm = init_drm_atomic(device, mode_str, vrefresh);
+		drm = init_drm_atomic(device, mode_str, vrefresh, count);
 	else
-		drm = init_drm_legacy(device, mode_str, vrefresh);
+		drm = init_drm_legacy(device, mode_str, vrefresh, count);
 	if (!drm) {
 		printf("failed to initialize %s DRM\n", atomic ? "atomic" : "legacy");
 		return -1;
