@@ -139,6 +139,12 @@ static int legacy_run(const struct gbm *gbm, const struct egl *egl)
 		bo = next_bo;
 	}
 
+	double elapsed_time = cur_time - start_time;
+	double secs = elapsed_time / (double)NSEC_PER_SEC;
+	unsigned frames = i - 1;  /* first frame ignored */
+	printf("Rendered %u frames in %f sec (%f fps)\n",
+		frames, secs, (double)frames/secs);
+
 	return 0;
 }
 

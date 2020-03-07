@@ -308,6 +308,12 @@ static int atomic_run(const struct gbm *gbm, const struct egl *egl)
 		flags &= ~(DRM_MODE_ATOMIC_ALLOW_MODESET);
 	}
 
+	double elapsed_time = cur_time - start_time;
+	double secs = elapsed_time / (double)NSEC_PER_SEC;
+	unsigned frames = i - 1;  /* first frame ignored */
+	printf("Rendered %u frames in %f sec (%f fps)\n",
+		frames, secs, (double)frames/secs);
+
 	return ret;
 }
 
