@@ -95,7 +95,9 @@ static int error_frames;
 static int zoom = 1;
 static bool full;
 static bool stop;
+#ifdef HAVE_LIBPNG
 static bool png;
+#endif
 static GLenum target;
 static struct size {
 	unsigned x, y, z;
