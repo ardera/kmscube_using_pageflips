@@ -602,7 +602,7 @@ static void extract_pix(uint8_t *rgba, int *slice, int *level, bool *complemente
 {
 	*slice = (((float)rgba[0]) / 255.0) * 8.0;
 	*level = (((float)rgba[1]) / 255.0) * 16.0;
-	*complemented = (((float)rgba[2]) / 255.0) / 0.25;
+	*complemented = (((float)rgba[2]) / 255.0) / 0.25 != 0.0f;
 }
 
 static bool probe_pix(int x, int y, int w, int h, int s, int m)
