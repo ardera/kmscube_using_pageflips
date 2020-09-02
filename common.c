@@ -41,14 +41,11 @@ gbm_surface_create_with_modifiers(struct gbm_device *gbm,
                                   const uint64_t *modifiers,
                                   const unsigned int count);
 
-const struct gbm * init_gbm(int drm_fd, int w, int h, uint32_t format, uint64_t modifier)
+static struct gbm * init_surface(uint64_t modifier)
 {
-	gbm.dev = gbm_create_device(drm_fd);
-	gbm.format = format;
-	gbm.surface = NULL;
-
 	if (gbm_surface_create_with_modifiers) {
-		gbm.surface = gbm_surface_create_with_modifiers(gbm.dev, w, h,
+		gbm.surface = gbm_surface_create_with_modifiers(gbm.dev,
+								gbm.width, gbm.height,
 								gbm.format,
 								&modifier, 1);
 
@@ -59,7 +56,8 @@ const struct gbm * init_gbm(int drm_fd, int w, int h, uint32_t format, uint64_t 
 			fprintf(stderr, "Modifiers requested but support isn't available\n");
 			return NULL;
 		}
-		gbm.surface = gbm_surface_create(gbm.dev, w, h,
+		gbm.surface = gbm_surface_create(gbm.dev,
+						gbm.width, gbm.height,
 						gbm.format,
 						GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
 
@@ -70,10 +68,19 @@ const struct gbm * init_gbm(int drm_fd, int w, int h, uint32_t format, uint64_t 
 		return NULL;
 	}
 
+	return &gbm;
+}
+
+const struct gbm * init_gbm(int drm_fd, int w, int h, uint32_t format, uint64_t modifier)
+{
+	gbm.dev = gbm_create_device(drm_fd);
+	gbm.format = format;
+	gbm.surface = NULL;
+
 	gbm.width = w;
 	gbm.height = h;
 
-	return &gbm;
+	return init_surface(modifier);
 }
 
 static bool has_ext(const char *extension_list, const char *ext)
