@@ -96,21 +96,30 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePlatformPixmapSurfaceEXT (EGLDisplay dpy,
 #define EGL_DMA_BUF_PLANE3_MODIFIER_HI_EXT 0x344A
 #endif
 
+#define NUM_BUFFERS 2
+
 struct gbm {
 	struct gbm_device *dev;
 	struct gbm_surface *surface;
+	struct gbm_bo *bos[NUM_BUFFERS];    /* for the surfaceless case */
 	uint32_t format;
 	int width, height;
 };
 
-const struct gbm * init_gbm(int drm_fd, int w, int h, uint32_t format, uint64_t modifier);
+const struct gbm * init_gbm(int drm_fd, int w, int h, uint32_t format, uint64_t modifier, bool surfaceless);
 
+struct framebuffer {
+	EGLImageKHR image;
+	GLuint tex;
+	GLuint fb;
+};
 
 struct egl {
 	EGLDisplay display;
 	EGLConfig config;
 	EGLContext context;
 	EGLSurface surface;
+	struct framebuffer fbs[NUM_BUFFERS];    /* for the surfaceless case */
 
 	PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT;
 	PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR;

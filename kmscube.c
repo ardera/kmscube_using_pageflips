@@ -41,7 +41,7 @@ static const struct egl *egl;
 static const struct gbm *gbm;
 static const struct drm *drm;
 
-static const char *shortopts = "Ac:D:f:M:m:p:S:s:V:v:";
+static const char *shortopts = "Ac:D:f:M:m:p:S:s:V:v:x";
 
 static const struct option longopts[] = {
 	{"atomic", no_argument,       0, 'A'},
@@ -54,12 +54,13 @@ static const struct option longopts[] = {
 	{"samples",  required_argument, 0, 's'},
 	{"video",  required_argument, 0, 'V'},
 	{"vmode",  required_argument, 0, 'v'},
+	{"surfaceless", no_argument,  0, 'x'},
 	{0, 0, 0, 0}
 };
 
 static void usage(const char *name)
 {
-	printf("Usage: %s [-ADfMmSsVv]\n"
+	printf("Usage: %s [-ADfMmSsVvx]\n"
 			"\n"
 			"options:\n"
 			"    -A, --atomic             use atomic modesetting and fencing\n"
@@ -79,7 +80,9 @@ static void usage(const char *name)
 			"    -s, --samples=N          use MSAA\n"
 			"    -V, --video=FILE         video textured cube (comma separated list)\n"
 			"    -v, --vmode=VMODE        specify the video mode in the format\n"
-			"                             <mode>[-<vrefresh>]\n",
+			"                             <mode>[-<vrefresh>]\n"
+			"    -x, --surfaceless        use surfaceless mode, instead of gbm surface\n"
+			,
 			name);
 }
 
@@ -100,6 +103,7 @@ int main(int argc, char *argv[])
 	unsigned int len;
 	unsigned int vrefresh = 0;
 	unsigned int count = ~0;
+	bool surfaceless = false;
 
 #ifdef HAVE_GST
 	gst_init(&argc, &argv);
@@ -177,6 +181,9 @@ int main(int argc, char *argv[])
 			strncpy(mode_str, optarg, len);
 			mode_str[len] = '\0';
 			break;
+		case 'x':
+			surfaceless = true;
+			break;
 		default:
 			usage(argv[0]);
 			return -1;
@@ -193,7 +200,7 @@ int main(int argc, char *argv[])
 	}
 
 	gbm = init_gbm(drm->fd, drm->mode->hdisplay, drm->mode->vdisplay,
-			format, modifier);
+			format, modifier, surfaceless);
 	if (!gbm) {
 		printf("failed to initialize GBM\n");
 		return -1;

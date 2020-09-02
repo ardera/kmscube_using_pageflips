@@ -54,8 +54,12 @@ static int legacy_run(const struct gbm *gbm, const struct egl *egl)
 	int64_t start_time, report_time, cur_time;
 	int ret;
 
-	eglSwapBuffers(egl->display, egl->surface);
-	bo = gbm_surface_lock_front_buffer(gbm->surface);
+	if (gbm->surface) {
+		eglSwapBuffers(egl->display, egl->surface);
+		bo = gbm_surface_lock_front_buffer(gbm->surface);
+	} else {
+		bo = gbm->bos[0];
+	}
 	fb = drm_fb_get_from_bo(bo);
 	if (!fb) {
 		fprintf(stderr, "Failed to get a new framebuffer BO\n");
@@ -73,6 +77,7 @@ static int legacy_run(const struct gbm *gbm, const struct egl *egl)
 	start_time = report_time = get_time_ns();
 
 	while (i < drm.count) {
+		unsigned frame = i;
 		struct gbm_bo *next_bo;
 		int waiting_for_flip = 1;
 
@@ -83,10 +88,19 @@ static int legacy_run(const struct gbm *gbm, const struct egl *egl)
 			start_time = report_time = get_time_ns();
 		}
 
+		if (!gbm->surface) {
+			glBindFramebuffer(GL_FRAMEBUFFER, egl->fbs[frame % NUM_BUFFERS].fb);
+		}
+
 		egl->draw(i++);
 
-		eglSwapBuffers(egl->display, egl->surface);
-		next_bo = gbm_surface_lock_front_buffer(gbm->surface);
+		if (gbm->surface) {
+			eglSwapBuffers(egl->display, egl->surface);
+			next_bo = gbm_surface_lock_front_buffer(gbm->surface);
+		} else {
+			glFinish();
+			next_bo = gbm->bos[frame % NUM_BUFFERS];
+		}
 		fb = drm_fb_get_from_bo(next_bo);
 		if (!fb) {
 			fprintf(stderr, "Failed to get a new framebuffer BO\n");
@@ -135,7 +149,9 @@ static int legacy_run(const struct gbm *gbm, const struct egl *egl)
 		}
 
 		/* release last buffer to render on again: */
-		gbm_surface_release_buffer(gbm->surface, bo);
+		if (gbm->surface) {
+			gbm_surface_release_buffer(gbm->surface, bo);
+		}
 		bo = next_bo;
 	}
 

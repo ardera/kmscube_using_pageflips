@@ -196,6 +196,7 @@ static int atomic_run(const struct gbm *gbm, const struct egl *egl)
 	start_time = report_time = get_time_ns();
 
 	while (i < drm.count) {
+		unsigned frame = i;
 		struct gbm_bo *next_bo;
 		EGLSyncKHR gpu_fence = NULL;   /* out-fence from gpu, in-fence to kms */
 		EGLSyncKHR kms_fence = NULL;   /* in-fence to gpu, out-fence from kms */
@@ -222,6 +223,10 @@ static int atomic_run(const struct gbm *gbm, const struct egl *egl)
 			start_time = report_time = get_time_ns();
 		}
 
+		if (!gbm->surface) {
+			glBindFramebuffer(GL_FRAMEBUFFER, egl->fbs[frame % NUM_BUFFERS].fb);
+		}
+
 		egl->draw(i++);
 
 		/* insert fence to be singled in cmdstream.. this fence will be
@@ -230,7 +235,9 @@ static int atomic_run(const struct gbm *gbm, const struct egl *egl)
 		gpu_fence = create_fence(egl, EGL_NO_NATIVE_FENCE_FD_ANDROID);
 		assert(gpu_fence);
 
-		eglSwapBuffers(egl->display, egl->surface);
+		if (gbm->surface) {
+			eglSwapBuffers(egl->display, egl->surface);
+		}
 
 		/* after swapbuffers, gpu_fence should be flushed, so safe
 		 * to get fd:
@@ -239,7 +246,11 @@ static int atomic_run(const struct gbm *gbm, const struct egl *egl)
 		egl->eglDestroySyncKHR(egl->display, gpu_fence);
 		assert(drm.kms_in_fence_fd != -1);
 
-		next_bo = gbm_surface_lock_front_buffer(gbm->surface);
+		if (gbm->surface) {
+			next_bo = gbm_surface_lock_front_buffer(gbm->surface);
+		} else {
+			next_bo = gbm->bos[frame % NUM_BUFFERS];
+		}
 		if (!next_bo) {
 			printf("Failed to lock frontbuffer\n");
 			return -1;
@@ -300,7 +311,7 @@ static int atomic_run(const struct gbm *gbm, const struct egl *egl)
 		}
 
 		/* release last buffer to render on again: */
-		if (bo)
+		if (bo && gbm->surface)
 			gbm_surface_release_buffer(gbm->surface, bo);
 		bo = next_bo;
 
