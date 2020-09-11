@@ -57,6 +57,8 @@ static int add_connector_property(drmModeAtomicReq *req, uint32_t obj_id,
 		return -EINVAL;
 	}
 
+	printf("atomic_request %p: conn  %3d: [\"%s\"] = %llu\n", req, obj_id, name, value);
+
 	return drmModeAtomicAddProperty(req, obj_id, prop_id, value);
 }
 
@@ -78,6 +80,8 @@ static int add_crtc_property(drmModeAtomicReq *req, uint32_t obj_id,
 		printf("no crtc property: %s\n", name);
 		return -EINVAL;
 	}
+
+	printf("atomic_request %p: crtc  %3d: [\"%s\"] = %llu\n", req, obj_id, name, value);
 
 	return drmModeAtomicAddProperty(req, obj_id, prop_id, value);
 }
@@ -101,6 +105,8 @@ static int add_plane_property(drmModeAtomicReq *req, uint32_t obj_id,
 		printf("no plane property: %s\n", name);
 		return -EINVAL;
 	}
+
+	printf("atomic_request %p: plane %3d: [\"%s\"] = %llu\n", req, obj_id, name, value);
 
 	return drmModeAtomicAddProperty(req, obj_id, prop_id, value);
 }
@@ -141,20 +147,10 @@ static int drm_atomic_commit(uint32_t fb_id, uint32_t flags)
 	add_plane_property(req, plane_id, "CRTC_W", drm.mode->hdisplay);
 	add_plane_property(req, plane_id, "CRTC_H", drm.mode->vdisplay);
 
-	if (drm.kms_in_fence_fd != -1) {
-		add_crtc_property(req, drm.crtc_id, "OUT_FENCE_PTR",
-				VOID2U64(&drm.kms_out_fence_fd));
-		add_plane_property(req, plane_id, "IN_FENCE_FD", drm.kms_in_fence_fd);
-	}
-
+	printf("committing %p\n", req);
 	ret = drmModeAtomicCommit(drm.fd, req, flags, NULL);
 	if (ret)
 		goto out;
-
-	if (drm.kms_in_fence_fd != -1) {
-		close(drm.kms_in_fence_fd);
-		drm.kms_in_fence_fd = -1;
-	}
 
 out:
 	drmModeAtomicFree(req);
@@ -162,16 +158,15 @@ out:
 	return ret;
 }
 
-static EGLSyncKHR create_fence(const struct egl *egl, int fd)
-{
-	EGLint attrib_list[] = {
-		EGL_SYNC_NATIVE_FENCE_FD_ANDROID, fd,
-		EGL_NONE,
-	};
-	EGLSyncKHR fence = egl->eglCreateSyncKHR(egl->display,
-			EGL_SYNC_NATIVE_FENCE_ANDROID, attrib_list);
-	assert(fence);
-	return fence;
+
+static void on_pageflip_event(
+	int fd,
+	unsigned int frame,
+	unsigned int sec,
+	unsigned int usec,
+	void *userdata
+) {
+	printf("page flip event ocurred: %12.6f\n", sec + (usec / 1000000.0));
 }
 
 static int atomic_run(const struct gbm *gbm, const struct egl *egl)
@@ -179,16 +174,14 @@ static int atomic_run(const struct gbm *gbm, const struct egl *egl)
 	struct gbm_bo *bo = NULL;
 	struct drm_fb *fb;
 	uint32_t i = 0;
-	uint32_t flags = DRM_MODE_ATOMIC_NONBLOCK;
+	uint32_t flags = DRM_MODE_PAGE_FLIP_EVENT | DRM_MODE_ATOMIC_NONBLOCK;
 	int64_t start_time, report_time, cur_time;
 	int ret;
 
-	if (egl_check(egl, eglDupNativeFenceFDANDROID) ||
-	    egl_check(egl, eglCreateSyncKHR) ||
-	    egl_check(egl, eglDestroySyncKHR) ||
-	    egl_check(egl, eglWaitSyncKHR) ||
-	    egl_check(egl, eglClientWaitSyncKHR))
-		return -1;
+	drmEventContext evctx = {
+		.version = 4,
+		.page_flip_handler = on_pageflip_event
+	};
 
 	/* Allow a modeset change for the first commit only. */
 	flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
@@ -198,23 +191,6 @@ static int atomic_run(const struct gbm *gbm, const struct egl *egl)
 	while (i < drm.count) {
 		unsigned frame = i;
 		struct gbm_bo *next_bo;
-		EGLSyncKHR gpu_fence = NULL;   /* out-fence from gpu, in-fence to kms */
-		EGLSyncKHR kms_fence = NULL;   /* in-fence to gpu, out-fence from kms */
-
-		if (drm.kms_out_fence_fd != -1) {
-			kms_fence = create_fence(egl, drm.kms_out_fence_fd);
-			assert(kms_fence);
-
-			/* driver now has ownership of the fence fd: */
-			drm.kms_out_fence_fd = -1;
-
-			/* wait "on the gpu" (ie. this won't necessarily block, but
-			 * will block the rendering until fence is signaled), until
-			 * the previous pageflip completes so we don't render into
-			 * the buffer that is still on screen.
-			 */
-			egl->eglWaitSyncKHR(egl->display, kms_fence, 0);
-		}
 
 		/* Start fps measuring on second frame, to remove the time spent
 		 * compiling shader, etc, from the fps:
@@ -229,22 +205,9 @@ static int atomic_run(const struct gbm *gbm, const struct egl *egl)
 
 		egl->draw(i++);
 
-		/* insert fence to be singled in cmdstream.. this fence will be
-		 * signaled when gpu rendering done
-		 */
-		gpu_fence = create_fence(egl, EGL_NO_NATIVE_FENCE_FD_ANDROID);
-		assert(gpu_fence);
-
 		if (gbm->surface) {
 			eglSwapBuffers(egl->display, egl->surface);
 		}
-
-		/* after swapbuffers, gpu_fence should be flushed, so safe
-		 * to get fd:
-		 */
-		drm.kms_in_fence_fd = egl->eglDupNativeFenceFDANDROID(egl->display, gpu_fence);
-		egl->eglDestroySyncKHR(egl->display, gpu_fence);
-		assert(drm.kms_in_fence_fd != -1);
 
 		if (gbm->surface) {
 			next_bo = gbm_surface_lock_front_buffer(gbm->surface);
@@ -259,24 +222,6 @@ static int atomic_run(const struct gbm *gbm, const struct egl *egl)
 		if (!fb) {
 			printf("Failed to get a new framebuffer BO\n");
 			return -1;
-		}
-
-		if (kms_fence) {
-			EGLint status;
-
-			/* Wait on the CPU side for the _previous_ commit to
-			 * complete before we post the flip through KMS, as
-			 * atomic will reject the commit if we post a new one
-			 * whilst the previous one is still pending.
-			 */
-			do {
-				status = egl->eglClientWaitSyncKHR(egl->display,
-								   kms_fence,
-								   0,
-								   EGL_FOREVER_KHR);
-			} while (status != EGL_CONDITION_SATISFIED_KHR);
-
-			egl->eglDestroySyncKHR(egl->display, kms_fence);
 		}
 
 		cur_time = get_time_ns();
@@ -307,6 +252,12 @@ static int atomic_run(const struct gbm *gbm, const struct egl *egl)
 		ret = drm_atomic_commit(fb->fb_id, flags);
 		if (ret) {
 			printf("failed to commit: %s\n", strerror(errno));
+			return -1;
+		}
+
+		ret = drmHandleEvent(drm.fd, &evctx);
+		if (ret) {
+			printf("failed to wait for page flip completion\n");
 			return -1;
 		}
 
