@@ -112,13 +112,13 @@ static int legacy_run(const struct gbm *gbm, const struct egl *egl)
 		 * hw composition
 		 */
 
-		ret = drmModePageFlip(drm.fd, drm.crtc_id, fb->fb_id,
-				DRM_MODE_PAGE_FLIP_EVENT, &waiting_for_flip);
+		ret = drmModePageFlip(drm.fd, drm.crtc_id, fb->fb_id, DRM_MODE_PAGE_FLIP_ASYNC, &waiting_for_flip);
 		if (ret) {
 			printf("failed to queue page flip: %s\n", strerror(errno));
 			return -1;
 		}
 
+		/*
 		while (waiting_for_flip) {
 			FD_ZERO(&fds);
 			FD_SET(0, &fds);
@@ -137,6 +137,7 @@ static int legacy_run(const struct gbm *gbm, const struct egl *egl)
 			}
 			drmHandleEvent(drm.fd, &evctx);
 		}
+		*/
 
 		cur_time = get_time_ns();
 		if (cur_time > (report_time + 2 * NSEC_PER_SEC)) {
@@ -150,7 +151,12 @@ static int legacy_run(const struct gbm *gbm, const struct egl *egl)
 
 		/* release last buffer to render on again: */
 		if (gbm->surface) {
+			//cur_time = get_time_ns();
+
 			gbm_surface_release_buffer(gbm->surface, bo);
+
+			//double elapsed = (get_time_ns() - cur_time) / (double)NSEC_PER_SEC;
+			//printf("gbm_surface_release_buffer took %f sec\n", elapsed);
 		}
 		bo = next_bo;
 	}
