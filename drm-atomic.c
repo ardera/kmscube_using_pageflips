@@ -57,8 +57,6 @@ static int add_connector_property(drmModeAtomicReq *req, uint32_t obj_id,
 		return -EINVAL;
 	}
 
-	printf("atomic_request %p: conn  %3d: [\"%s\"] = %llu\n", req, obj_id, name, value);
-
 	return drmModeAtomicAddProperty(req, obj_id, prop_id, value);
 }
 
@@ -80,8 +78,6 @@ static int add_crtc_property(drmModeAtomicReq *req, uint32_t obj_id,
 		printf("no crtc property: %s\n", name);
 		return -EINVAL;
 	}
-
-	printf("atomic_request %p: crtc  %3d: [\"%s\"] = %llu\n", req, obj_id, name, value);
 
 	return drmModeAtomicAddProperty(req, obj_id, prop_id, value);
 }
@@ -105,8 +101,6 @@ static int add_plane_property(drmModeAtomicReq *req, uint32_t obj_id,
 		printf("no plane property: %s\n", name);
 		return -EINVAL;
 	}
-
-	printf("atomic_request %p: plane %3d: [\"%s\"] = %llu\n", req, obj_id, name, value);
 
 	return drmModeAtomicAddProperty(req, obj_id, prop_id, value);
 }
@@ -147,7 +141,6 @@ static int drm_atomic_commit(uint32_t fb_id, uint32_t flags)
 	add_plane_property(req, plane_id, "CRTC_W", drm.mode->hdisplay);
 	add_plane_property(req, plane_id, "CRTC_H", drm.mode->vdisplay);
 
-	printf("committing %p\n", req);
 	ret = drmModeAtomicCommit(drm.fd, req, flags, NULL);
 	if (ret)
 		goto out;
@@ -166,7 +159,7 @@ static void on_pageflip_event(
 	unsigned int usec,
 	void *userdata
 ) {
-	printf("page flip event ocurred: %12.6f\n", sec + (usec / 1000000.0));
+	
 }
 
 static int atomic_run(const struct gbm *gbm, const struct egl *egl)
