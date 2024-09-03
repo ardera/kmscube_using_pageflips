@@ -295,7 +295,6 @@ static int get_plane_id(void)
 	drmModePlaneResPtr plane_resources;
 	uint32_t i, j;
 	int ret = -EINVAL;
-	int found_primary = 0;
 
 	plane_resources = drmModeGetPlaneResources(drm.fd);
 	if (!plane_resources) {
@@ -303,7 +302,12 @@ static int get_plane_id(void)
 		return -1;
 	}
 
-	for (i = 0; (i < plane_resources->count_planes) && !found_primary; i++) {
+	bool found_primary = false;
+	uint32_t primary = 0;
+
+	bool found_current_primary = false;
+	uint32_t current_primary = 0;
+	for (i = 0; (i < plane_resources->count_planes) && !found_current_primary; i++) {
 		uint32_t id = plane_resources->planes[i];
 		drmModePlanePtr plane = drmModeGetPlane(drm.fd, id);
 		if (!plane) {
@@ -325,7 +329,13 @@ static int get_plane_id(void)
 				if ((strcmp(p->name, "type") == 0) &&
 						(props->prop_values[j] == DRM_PLANE_TYPE_PRIMARY)) {
 					/* found our primary plane, lets use that: */
-					found_primary = 1;
+					found_primary = true;
+					primary = id;
+				} else if ((strcmp(p->name, "CRTC_ID") == 0) &&
+						(props->prop_values[j] == drm.crtc_id)) {
+					/* found a primary plane that's already connected to our CRTC. */
+					found_current_primary = true;
+					current_primary = id;
 				}
 
 				drmModeFreeProperty(p);
@@ -339,7 +349,7 @@ static int get_plane_id(void)
 
 	drmModeFreePlaneResources(plane_resources);
 
-	return ret;
+	return found_current_primary ? current_primary : (found_primary ? primary : -EINVAL);
 }
 
 const struct drm * init_drm_atomic(const char *device, const char *mode_str,
