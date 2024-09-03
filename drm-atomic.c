@@ -327,6 +327,7 @@ static int get_plane_id(void)
 				} else if ((strcmp(p->name, "CRTC_ID") == 0) &&
 						(props->prop_values[j] == drm.crtc_id)) {
 					/* found a primary plane that's already connected to our CRTC. */
+					fprintf(stderr, "Reusing currently used primary plane.\n");
 					found_current_primary = true;
 					current_primary = id;
 				}
